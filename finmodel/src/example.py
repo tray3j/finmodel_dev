@@ -3,28 +3,46 @@
 import pandas as pd
 import numpy as np
 
-# create series of sales figures over a quarterly range. These are the ACTUALS
-sales = pd.Series([50,60,75,90,125,135,140,163])
-ind = pd.PeriodIndex(pd.period_range('2019Q1',periods=8,freq="Q-NOV")) 
-sales.index=ind
-print(sales)
+actl_periods = pd.PeriodIndex(pd.period_range(2019,2023,freq='A-DEC'))
+fcst_periods = pd.PeriodIndex(pd.period_range(2024,2028,freq='A-DEC'))
 
-# Calculate the growth, Which is a metric
-growth = sales.pct_change(4) # 4 because this is an annual growth rate. TODO make dynamic
+# create two accounts: Gadgets and gizmos
+gadgets = pd.Series(data=[60,70,85,100,125],index=actl_periods,name='gadgets')
+gizmos = pd.Series(data=[200,210,217,228,239],index=actl_periods,name='gizmos')
+# Enchancements: 1) have these items populate some global 'account' dict for accessing / consolidating
+# 2) functionally generate instead of hardcoding (of course)
+accounts = [gadgets, gizmos]
+
+# instantiate metrics dict which holds the logic for defining metrics
+metrics_dict = {
+    'YoY Growth' : {
+        'func': lambda x: x.pct_change(),
+        'name': '_yoy_growth'
+    }
+}
+
+def calc_metrics(metrics_dict, actuals):
+    '''Calculates metrics on provided actuals.
+    Returns a list of metrics.
+    parameters:
+        metrics_dict: dict with metrics, expects each 'metric' to have
+        keys of 'name' and 'func' with name of the metric to be appended onto end of each actual
+        and 'func' which should take one argument of the actual being passed and return an identically shaped and indexed array or scalar
+
+        actuals: a list of pd.series-like objects appropriately indexed. If func in metrics dict calls object methods on actuals, actuals must
+        have that method be callable # TODO what does appropriately indexed mean??
+    '''
+    metrics = []
+    for metric in metrics_dict.values():
+        for actual in actuals:
+            metric_name = actual.name + metric.get('name')
+            metric_output = metric['func'](actual)
+            metric_output.name = metric_name
+            metrics.append(metric_output)
+    return metrics
+
+growth = calc_metrics(metrics_dict=metrics_dict, actuals=accounts)
+
+print(accounts)
 print(growth)
 
-# now we define what periods we would like to forecast
-fcst_periods = pd.PeriodIndex(pd.period_range('2021Q1',periods=8,freq='Q-NOV'))
-
-# make an ASSUMPTION(average actual growth) about our DRIVER's(growth) behavior in the forecast periods 
-fcst_growth = pd.Series([growth.mean() for i in range(8)],index=fcst_periods)
-print(fcst_growth)
-
-# now use the DRIVER to calculate the FORECAST
-base_index = fcst_periods 
-base = pd.Series(sales.values,fcst_periods)
-fcst_sales = (1+fcst_growth) * base
-
-
-model = pd.concat([sales,fcst_sales])
-print(model)
