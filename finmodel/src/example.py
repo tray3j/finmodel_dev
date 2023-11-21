@@ -12,30 +12,8 @@ gizmos = pd.Series(data=[200,210,217,228,239],index=actl_periods,name='gizmos')
 # Enchancements: 1) have these items populate some global 'account' dict for accessing / consolidating
 # 2) functionally generate instead of hardcoding (of course)
 actuals = pd.concat([gadgets, gizmos],axis=0,keys=[gadgets.name, gizmos.name],names=['Account','Year'])
-print(actuals.info())
+
 # instantiate metrics dict which holds the logic for defining metrics
-
-def level_mix_calc(df, levels): # conveniently calculate percentage mix
-    '''calculates the percentage mix of a particular value in an index level of a df. 
-    Returns a df'''
-    base = df.groupby(level=levels).transform(lambda x: x.sum())
-    mix = df / base
-    return mix
-
-metrics_dict = {
-    'YoY Growth' : {
-        'func': lambda x: x.pct_change(),
-        'name': 'yoy_growth',
-        'other_args' : None,
-        'group_levels' : ['Account']
-    },
-    'Gizmo mix' : {
-        'func': level_mix_calc,
-        'other_args' : dict(levels=['Year']),
-        'name': 'gizmo_mix',
-        'group_levels' : None
-    }
-}
 
 def calc_metrics(metrics_dict, actuals):#, group_by_levels=None):
     '''Calculates metrics on provided actuals.
@@ -60,7 +38,6 @@ def calc_metrics(metrics_dict, actuals):#, group_by_levels=None):
             #metrics.name = metric['name']
             #metrics = metrics.add_suffix(metric.get('name'))    
         else:
-            print('due to no group_levels being passed in metric, this operation is not yet supported')    
             if metric['other_args']:
                 metrics[metric['name']] = metric['func'](actuals,**metric['other_args'])
             else:
@@ -72,8 +49,57 @@ def calc_metrics(metrics_dict, actuals):#, group_by_levels=None):
         print('WARNING: Index of metrics is not equal to index of actuals. Alignment and calculations may not work as expected')
     return metrics
 
+def level_mix_calc(df, levels): # conveniently calculate percentage mix
+    '''calculates the percentage mix of a particular value in an index level of a df. 
+    Returns a df'''
+    base = df.groupby(level=levels).transform(lambda x: x.sum())
+    mix = df / base
+    return mix
+
+metrics_dict = {
+    'YoY Growth' : {
+        'func': lambda x: x.pct_change(),
+        'name': 'yoy_growth',
+        'other_args' : None,
+        'group_levels' : ['Account']
+    },
+    'Gizmo mix' : {
+        'func': level_mix_calc,
+        'other_args' : dict(levels=['Year']),
+        'name': 'gizmo_mix',
+        'group_levels' : None
+    }
+}
+
+def simple_growth(input,g,nper):
+    '''grow input exponentially at growth rate g for nper number of periods'''
+    exps = np.arange(start=0,stop=nper+1,step=1)
+    factors = np.power((1+g),exps)
+    result = input*factors
+    return result
+
+
 growth = calc_metrics(metrics_dict=metrics_dict, actuals=actuals)
+
+assumption_dict = {
+    'gadget_growth': {
+        'growth_func' : simple_growth,
+        'growth' : growth.xs(key=('gadgets'))['yoy_growth'].mean()
+    },
+
+    'gizmo_growth': {
+        'competition' : pd.Series([False, False, True, True, True],index=fcst_periods),
+        'growth_func' : simple_growth,
+        'no_competition_growth' : growth.query("Account == 'gizmos'").iloc[-2:]['yoy_growth'].mean(),
+        'with_competition_growth' : "assumption_dict['gadget_growth']['growth']", # NEEDS REPLACEMENT AFTER THE FACT
+        'rationale' : """Assumes the growth observed in the last two actual periods continues until competition enters. Then,
+        grow at the same rate as gadgets have in the last two actual periods"""
+    }
+    
+}
+assumption_dict['gizmo_growth']['with_competition_growth'] = eval(assumption_dict['gizmo_growth']['with_competition_growth']) # is this legal?
 
 print(actuals)
 print(growth)
+print(assumption_dict)
 
