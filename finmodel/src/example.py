@@ -2,6 +2,7 @@
 # A minimal, simplistic example
 import pandas as pd
 import numpy as np
+from render import render_df
 
 actl_periods = pd.PeriodIndex(pd.period_range(2019,2023,freq='A-DEC'))
 fcst_periods = pd.PeriodIndex(pd.period_range(2024,2028,freq='A-DEC'))
@@ -102,4 +103,5 @@ assumption_dict['gizmo_growth']['with_competition_growth'] = eval(assumption_dic
 print(actuals)
 print(growth)
 print(assumption_dict)
+render_df(growth)
 
