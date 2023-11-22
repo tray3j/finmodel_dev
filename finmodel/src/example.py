@@ -61,7 +61,7 @@ def level_mix_calc(df, levels): # conveniently calculate percentage mix
 
 metrics_dict = {
     'YoY Growth' : {
-        'func': lambda x: x.pct_change(fill_method=None),
+        'func': lambda x: x.pct_change(),
         'name': 'yoy_growth',
         'other_args' : None,
         'group_levels' : ['Account']
@@ -129,8 +129,14 @@ model_index = pd.MultiIndex.from_product([actuals.index.get_level_values(0).uniq
 model = model_calc(model_dict=model_dict, fcst_index=model_index)
 model.columns = ['Sales'] # TODO make this not hardcoded
 
+# We should wrap up these last few steps in a function
 output = pd.concat([actuals.to_frame(),model],axis=0,keys=['Actual','Forecast'],names=['Source']).sort_index()#)
-#output = calc_metrics(metrics_dict=metrics_dict,actuals=output)
+
+full_metrics_dict = metrics_dict
+full_metrics_dict['YoY Growth']['group_levels'] = ['Account']
+output_metrics = calc_metrics(metrics_dict=full_metrics_dict,actuals=output)
+output = pd.concat([output,output_metrics],axis=1)
+
 
 
 print(actuals)
