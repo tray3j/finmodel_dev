@@ -13,6 +13,8 @@ gizmos = pd.Series(data=[200,210,217,228,239],index=actl_periods,name='gizmos')
 # Enchancements: 1) have these items populate some global 'account' dict for accessing / consolidating
 # 2) functionally generate instead of hardcoding (of course)
 actuals = pd.concat([gadgets, gizmos],axis=0,keys=[gadgets.name, gizmos.name],names=['Account','Year'])
+actuals.name='Sales'
+
 
 # instantiate metrics dict which holds the logic for defining metrics
 
@@ -59,7 +61,7 @@ def level_mix_calc(df, levels): # conveniently calculate percentage mix
 
 metrics_dict = {
     'YoY Growth' : {
-        'func': lambda x: x.pct_change(),
+        'func': lambda x: x.pct_change(fill_method=None),
         'name': 'yoy_growth',
         'other_args' : None,
         'group_levels' : ['Account']
@@ -74,7 +76,7 @@ metrics_dict = {
 
 def simple_growth(input,g,nper):
     '''grow input exponentially at growth rate g for nper number of periods'''
-    exps = np.arange(start=0,stop=nper+1,step=1)
+    exps = np.arange(start=1,stop=nper+1,step=1)
     factors = np.power((1+g),exps)
     result = input*factors
     return result
@@ -84,13 +86,13 @@ growth = calc_metrics(metrics_dict=metrics_dict, actuals=actuals)
 
 assumption_dict = {
     'gadget_growth': {
-        'growth_func' : simple_growth,
+        'growth_func' : simple_growth, # TODO: remove, belongs in model step
         'growth' : growth.xs(key=('gadgets'))['yoy_growth'].mean()
     },
 
     'gizmo_growth': {
         'competition' : pd.Series([False, False, True, True, True],index=fcst_periods),
-        'growth_func' : simple_growth,
+        'growth_func' : simple_growth, # TODO: remove, belongs in model step
         'no_competition_growth' : growth.query("Account == 'gizmos'").iloc[-2:]['yoy_growth'].mean(),
         'with_competition_growth' : "assumption_dict['gadget_growth']['growth']", # NEEDS REPLACEMENT AFTER THE FACT
         'rationale' : """Assumes the growth observed in the last two actual periods continues until competition enters. Then,
@@ -100,8 +102,39 @@ assumption_dict = {
 }
 assumption_dict['gizmo_growth']['with_competition_growth'] = eval(assumption_dict['gizmo_growth']['with_competition_growth']) # is this legal?
 
+model_dict = { # is this more appropriate as a function somehow?
+    'gadgets': {
+        'model' : simple_growth(input=actuals.xs('gadgets').iloc[-1],g=assumption_dict['gadget_growth']['growth'],nper=len(fcst_periods))
+        },
+    'gizmos': {
+        'model' : simple_growth(input=actuals.xs('gizmos').iloc[-1],g=np.where(assumption_dict['gizmo_growth']['competition'],assumption_dict['gizmo_growth']['no_competition_growth'],assumption_dict['gizmo_growth']['with_competition_growth']),nper=len(fcst_periods))
+        }
+}
+
+def model_calc(model_dict, fcst_index):
+    ''' takes in model dict. Returns a dataframe with index fcst_index,
+    using models (function calls defined in model dict) to generate similarly indexed df'''
+    placeholder = pd.DataFrame(index=fcst_index)
+    model = pd.DataFrame()
+    for account,values in model_dict.items():
+        print(f'modeling account: {account} with value {values["model"]}')
+        # build the components of model df bit by bit
+        result_array = values['model']
+        result_index = placeholder.xs(account,0,level='Account',drop_level=False).index
+        result = pd.DataFrame(data=result_array,index=result_index)
+        model = pd.concat([model,result],axis=0)
+    return model
+
+model_index = pd.MultiIndex.from_product([actuals.index.get_level_values(0).unique().to_list(),fcst_periods],names=['Account','Year'])
+model = model_calc(model_dict=model_dict, fcst_index=model_index)
+model.columns = ['Sales'] # TODO make this not hardcoded
+
+output = pd.concat([actuals.to_frame(),model],axis=0,keys=['Actual','Forecast'],names=['Source']).sort_index()#)
+#output = calc_metrics(metrics_dict=metrics_dict,actuals=output)
+
+
 print(actuals)
 print(growth)
-print(assumption_dict)
-render_df(growth)
+render_df(pd.concat([actuals,growth],axis=0))
+render_df(output)
 
