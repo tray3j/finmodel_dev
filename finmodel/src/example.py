@@ -139,8 +139,7 @@ output = pd.concat([output,output_metrics],axis=1)
 
 
 
-print(actuals)
-print(growth)
-render_df(pd.concat([actuals,growth],axis=0))
+# print(actuals)
+# print(growth)'
 render_df(output)
 
