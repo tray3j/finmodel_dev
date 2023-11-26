@@ -77,7 +77,7 @@ metrics_dict = {
 def simple_growth(input,g,nper):
     '''grow input exponentially at growth rate g for nper number of periods'''
     exps = np.arange(start=1,stop=nper+1,step=1)
-    factors = np.power((1+g),exps)
+    factors = np.cumprod((1+g),axis=0)
     result = input*factors
     return result
 
@@ -87,7 +87,7 @@ growth = calc_metrics(metrics_dict=metrics_dict, actuals=actuals)
 assumption_dict = {
     'gadget_growth': {
         'growth_func' : simple_growth, # TODO: remove, belongs in model step
-        'growth' : growth.xs(key=('gadgets'))['yoy_growth'].mean()
+        'growth' : np.full(5,growth.xs(key=('gadgets'))['yoy_growth'].mean())
     },
 
     'gizmo_growth': {
@@ -120,6 +120,7 @@ def model_calc(model_dict, fcst_index):
         print(f'modeling account: {account} with value {values["model"]}')
         # build the components of model df bit by bit
         result_array = values['model']
+        print(result_array)
         result_index = placeholder.xs(account,0,level='Account',drop_level=False).index
         result = pd.DataFrame(data=result_array,index=result_index)
         model = pd.concat([model,result],axis=0)
