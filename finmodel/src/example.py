@@ -1,8 +1,20 @@
 
+#####################################################################################################################################################
 # A minimal, simplistic example
+#####################################################################################################################################################
+
+# Standard library imports
+import warnings
+
+# Third party library imports
 import pandas as pd
 import numpy as np
+
+# Local application imports
+from decorators import log
 from render import render_df
+
+warnings.simplefilter(action='ignore', category=FutureWarning) # just doing this for now I promise
 
 actl_periods = pd.PeriodIndex(pd.period_range(2019,2023,freq='A-DEC'))
 fcst_periods = pd.PeriodIndex(pd.period_range(2024,2028,freq='A-DEC'))
@@ -17,7 +29,7 @@ actuals.name='Sales'
 
 
 # instantiate metrics dict which holds the logic for defining metrics
-
+@log
 def calc_metrics(metrics_dict, actuals):#, group_by_levels=None):
     '''Calculates metrics on provided actuals.
     Returns a list of metrics.
@@ -46,12 +58,13 @@ def calc_metrics(metrics_dict, actuals):#, group_by_levels=None):
             else:
                 metrics[metric['name']] = metric['func'](actuals)
     
-    if metrics.index.equals(actuals.index):
-        print('Indexes are aligned')
-    else:
-        print('WARNING: Index of metrics is not equal to index of actuals. Alignment and calculations may not work as expected')
+    # if metrics.index.equals(actuals.index):
+    #     print('Indexes are aligned')
+    # else:
+    #     print('WARNING: Index of metrics is not equal to index of actuals. Alignment and calculations may not work as expected')
     return metrics
 
+@log
 def level_mix_calc(df, levels): # conveniently calculate percentage mix
     '''calculates the percentage mix of a particular value in an index level of a df. 
     Returns a df'''
@@ -74,6 +87,7 @@ metrics_dict = {
     }
 }
 
+@log
 def simple_growth(input,g,nper):
     '''grow input exponentially at growth rate g for nper number of periods'''
     exps = np.arange(start=1,stop=nper+1,step=1)
@@ -111,16 +125,17 @@ model_dict = { # is this more appropriate as a function somehow?
         }
 }
 
+@log
 def model_calc(model_dict, fcst_index):
     ''' takes in model dict. Returns a dataframe with index fcst_index,
     using models (function calls defined in model dict) to generate similarly indexed df'''
     placeholder = pd.DataFrame(index=fcst_index)
     model = pd.DataFrame()
     for account,values in model_dict.items():
-        print(f'modeling account: {account} with value {values["model"]}')
+        # print(f'modeling account: {account} with value {values["model"]}')
         # build the components of model df bit by bit
         result_array = values['model']
-        print(result_array)
+        # print(result_array)
         result_index = placeholder.xs(account,0,level='Account',drop_level=False).index
         result = pd.DataFrame(data=result_array,index=result_index)
         model = pd.concat([model,result],axis=0)
@@ -141,6 +156,5 @@ output = pd.concat([output,output_metrics],axis=1)
 
 
 # print(actuals)
-# print(growth)'
+# print(growth)
 render_df(output)
-

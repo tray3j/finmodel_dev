@@ -15,11 +15,11 @@ from rich.panel import Panel
 from rich import print as pprint
 
 # Local application imports
-# --- NONE ---
+from decorators import log
 
 # ===================================================================================================================================================
+@log
 def render_df(df):
-
 
     # -----------------------------------------------------------------------------------------------------------------------------------------------
     # instantiating various things, configuring
