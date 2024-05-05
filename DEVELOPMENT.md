@@ -9,7 +9,7 @@ When *actual* business activity occurs, we record that as *actuals*. For that, n
 
 The set of future or predicted inputs to a model are *assumptions*, as they are what we assume may happen in some other version of reality. 
 
-The last flavor of data relevant to modeling are *metrics*. These are Usually ratios of different actuals, such as revenue per sales rep or days of sales outstanding.
+The last flavor of data relevant to modeling are *metrics*. These are usually ratios of different actuals, such as revenue per sales rep or days of sales outstanding.
 
 ## Motivation
 
@@ -17,6 +17,10 @@ This project is built because in our experience, corporate finance demands can b
 
 - Clear separation of logic from assumptions to enable robust sensitivity and simulation capabilities
 - Native time period handling
+- convenient case and scenario handling 
+- assumption sensitivity and simulation capability
+- robust to new logic and input dimensions after initialization
+- traceability support from output to inputs
 - Supports significantly larger data input sizes (slows down only at the gigabyte level instead of megabytes)
 - Ability to implement much more scalable testing and correctness checking
 - nearly limitless customizability of logic and data input
@@ -30,6 +34,13 @@ The life cycle of a model is assumed to be:
 - Assumptions are made about the modeled state of actuals and/or metrics 
 - The modeled values are calculated at the same level of detail as the Actuals
 
+functions needed:
+
+- register_actuals: reads in a dataset, defines indicies and dimensions, and columns (aka accounts)
+- register_metrics: takes in actuals. Function holds all the logic for defining and calculating metrics
+- register_assumptions: may or may not be the same accounts as metrics or actuals. 
+- register_model: defines the output accounts, reads in actuals and metrics, returns data with output with provided 
+- calculate: runs the model function(s) on actuals + metrics + assumptions and returns actuals (unchanged), metrics (calculated), and the model (calculated)
 
 
 
